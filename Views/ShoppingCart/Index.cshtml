@@ -1,0 +1,9 @@
+﻿@model ShoppingCart
+
+<h2>Your Cart</h2>
+
+@foreach (var product in Model.Products)
+{
+    <p>@product.Name - $@product.Price</p>
+}
+
