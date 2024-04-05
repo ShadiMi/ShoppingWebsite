@@ -37,7 +37,7 @@ namespace ShoppingWebsite.Models
         // Adds a product to the cart
         public void AddProduct(Product product)
         {
-            var existingProduct = Products.FirstOrDefault(p => p.Id == product.Id);
+            var existingProduct = Products.FirstOrDefault(p => p.ProductID == product.ProductID);
             if (existingProduct != null)
             {
                 // For simplicity, assuming each product is unique in the cart. Implement quantity logic if needed.
@@ -51,10 +51,10 @@ namespace ShoppingWebsite.Models
         // Removes a product from the cart
         public void RemoveProduct(int productId)
         {
-            Products.RemoveAll(p => p.Id == productId);
+            Products.RemoveAll(p => p.ProductID == productId);
         }
 
         // Calculates the total cost of the shopping cart
-        public decimal Total => Products.Sum(p => p.Price);
+        public decimal Total => Products.Sum(p => p.UnitPrice);
     }
 }

@@ -1,20 +1,15 @@
-﻿using ShoppingWebsite.Models;
-using ShoppingWebsite.Models;
+﻿using ShoppingWebsite.Models; // Use your actual namespace here
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ShoppingWebsite.Repository
 {
     public interface IProductRepository
     {
-        IEnumerable<Product> GetAllProducts();
-        Product GetProductById(int productId);
-        void AddProduct(Product product);
-        void UpdateProduct(Product product);
-        void DeleteProduct(int productId);
-
-        // New method signatures based on updated Product properties
-        IEnumerable<Product> GetProductsByCategory(string category);
-        IEnumerable<Product> SearchProducts(string searchTerm);
-        IEnumerable<Product> GetAvailableProducts();
+        Task<IEnumerable<Product>> GetAllProductsAsync();
+        Task<Product> GetProductByIdAsync(int productId);
+        Task AddProductAsync(Product product);
+        Task UpdateProductAsync(Product product);
+        Task DeleteProductAsync(int productId);
     }
 }

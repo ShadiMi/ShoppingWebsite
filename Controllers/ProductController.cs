@@ -1,56 +1,170 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ShoppingWebsite.Data;
 using ShoppingWebsite.Models;
-using ShoppingWebsite.Repository;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace ShoppingWebsite.Controllers
 {
     public class ProductsController : Controller
     {
-        private readonly IProductRepository _productRepository;
+        private readonly ApplicationDbContext _context;
 
-        public ProductsController(IProductRepository productRepository)
+        public ProductsController(ApplicationDbContext context)
         {
-            _productRepository = productRepository;
+            _context = context;
         }
 
-        public IActionResult Index()
+        // GET: Products
+        // Updated to include sorting logic in a single Index method
+        public async Task<IActionResult> Index(string sortOrder)
         {
-            var products = _productRepository.GetAllProducts();
-            return View(products);
-        }
+            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
+            ViewData["CategorySortParm"] = sortOrder == "Category" ? "category_desc" : "Category";
+            ViewData["StockSortParm"] = sortOrder == "Stock" ? "stock_desc" : "Stock";
 
-        public IActionResult Available()
-        {
-            var products = _productRepository.GetAvailableProducts();
-            return View("Index", products); // Reuse the Index view for displaying available products
-        }
+            var products = from p in _context.Products.Include(p => p.Category).Include(p => p.Supplier)
+                           select p;
 
-        public IActionResult ByCategory(string category)
-        {
-            var products = _productRepository.GetProductsByCategory(category);
-            return View("Index", products); // Reuse the Index view for displaying products by category
-        }
-
-        public IActionResult Search(string searchTerm)
-        {
-            var products = _productRepository.SearchProducts(searchTerm);
-
-            // If there's only one result, you might want to redirect to a detailed view of that product.
-            if (products.Count() == 1)
+            switch (sortOrder)
             {
-                return RedirectToAction("Detail", new { id = products.Single().Id });
+                case "name_desc":
+                    products = products.OrderByDescending(p => p.ProductName);
+                    break;
+                case "Category":
+                    products = products.OrderBy(p => p.Category.CategoryName);
+                    break;
+                case "category_desc":
+                    products = products.OrderByDescending(p => p.Category.CategoryName);
+                    break;
+                case "Stock":
+                    products = products.OrderBy(p => p.UnitsInStock);
+                    break;
+                case "stock_desc":
+                    products = products.OrderByDescending(p => p.UnitsInStock);
+                    break;
+                default:
+                    products = products.OrderBy(p => p.ProductName);
+                    break;
             }
 
-            return View("Index", products); // Reuse the Index view for displaying search results
+            return View(await products.ToListAsync());
         }
 
-        // Example Detail action, assuming you have one
-        public IActionResult Detail(int id)
+        // GET: Products/Create
+        public IActionResult Create()
         {
-            var product = _productRepository.GetProductById(id);
-            if (product == null) return NotFound();
+            ViewData["CategoryID"] = new SelectList(_context.Categories, "CategoryID", "CategoryName");
+            ViewData["SupplierID"] = new SelectList(_context.Suppliers, "SupplierID", "CompanyName");
+            return View();
+        }
+
+        // POST: Products/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("ProductID,ProductName,SupplierID,CategoryID,UnitPrice,UnitsInStock,UnitsOnOrder,Image")] Product product)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(product);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            ViewData["CategoryID"] = new SelectList(_context.Categories, "CategoryID", "CategoryName", product.CategoryID);
+            ViewData["SupplierID"] = new SelectList(_context.Suppliers, "SupplierID", "CompanyName", product.SupplierID);
             return View(product);
+        }
+
+        // GET: Products/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
+            {
+                return NotFound();
+            }
+            ViewData["CategoryID"] = new SelectList(_context.Categories, "CategoryID", "CategoryName", product.CategoryID);
+            ViewData["SupplierID"] = new SelectList(_context.Suppliers, "SupplierID", "CompanyName", product.SupplierID);
+            return View(product);
+        }
+
+        // POST: Products/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("ProductID,ProductName,SupplierID,CategoryID,UnitPrice,UnitsInStock,UnitsOnOrder,Image")] Product product)
+        {
+            if (id != product.ProductID)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(product);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!ProductExists(product.ProductID))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            ViewData["CategoryID"] = new SelectList(_context.Categories, "CategoryID", "CategoryName", product.CategoryID);
+            ViewData["SupplierID"] = new SelectList(_context.Suppliers, "SupplierID", "CompanyName", product.SupplierID);
+            return View(product);
+        }
+
+        // GET: Products/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var product = await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.Supplier)
+                .FirstOrDefaultAsync(m => m.ProductID == id);
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            return View(product);
+        }
+
+        // POST: Products/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var product = await _context.Products.FindAsync(id);
+            _context.Products.Remove(product);
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+
+        private bool ProductExists(int id)
+        {
+            return _context.Products.Any(e => e.ProductID == id);
         }
     }
 }

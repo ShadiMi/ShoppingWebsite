@@ -1,68 +1,51 @@
-﻿using ShoppingWebsite.Models;
+﻿using Microsoft.EntityFrameworkCore;
+using ShoppingWebsite.Data; // Use your actual namespace here
+using ShoppingWebsite.Models; // Use your actual namespace here
 using System.Collections.Generic;
-using System.Linq;
+using System.Threading.Tasks;
 
 namespace ShoppingWebsite.Repository
 {
     public class ProductRepository : IProductRepository
     {
-        // This is a simple in-memory list to simulate database data.
-        // In a real application, you would interact with a database here.
-        private List<Product> products = new List<Product>
-        {
-            new Product { Id = 1, Name = "Product 1", Price = 100m, Description = "Description 1", Category = "Category 1", ImageUrl = "image1.jpg", StockQuantity = 10 },
-            new Product { Id = 2, Name = "Product 2", Price = 200m, Description = "Description 2", Category = "Category 2", ImageUrl = "image2.jpg", StockQuantity = 0 }, // Example of unavailable product
-            // Add more products as needed for demonstration
-        };
+        private readonly ApplicationDbContext _context;
 
-        public IEnumerable<Product> GetAllProducts()
+        public ProductRepository(ApplicationDbContext context)
         {
-            return products;
+            _context = context;
         }
 
-        public Product GetProductById(int productId)
+        public async Task<IEnumerable<Product>> GetAllProductsAsync()
         {
-            return products.FirstOrDefault(p => p.Id == productId);
+            return await _context.Products.ToListAsync();
         }
 
-        public void AddProduct(Product product)
+        public async Task<Product> GetProductByIdAsync(int productId)
         {
-            // Assuming Ids are auto-incremented. In a database, this would be handled by the DBMS.
-            product.Id = products.Max(p => p.Id) + 1;
-            products.Add(product);
+            return await _context.Products
+                                 .FirstOrDefaultAsync(p => p.ProductID == productId);
         }
 
-        public void UpdateProduct(Product product)
+        public async Task AddProductAsync(Product product)
         {
-            var index = products.FindIndex(p => p.Id == product.Id);
-            if (index != -1)
-            {
-                products[index] = product;
-            }
+            _context.Products.Add(product);
+            await _context.SaveChangesAsync();
         }
 
-        public void DeleteProduct(int productId)
+        public async Task UpdateProductAsync(Product product)
         {
-            var product = GetProductById(productId);
+            _context.Products.Update(product);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteProductAsync(int productId)
+        {
+            var product = await _context.Products.FindAsync(productId);
             if (product != null)
             {
-                products.Remove(product);
+                _context.Products.Remove(product);
+                await _context.SaveChangesAsync();
             }
-        }
-
-        public IEnumerable<Product> GetProductsByCategory(string category)
-        {
-            return products.Where(p => p.Category == category);
-        }
-
-        public IEnumerable<Product> SearchProducts(string searchTerm)
-        {
-            return products.Where(p => p.Name.Contains(searchTerm) || p.Description.Contains(searchTerm));
-        }
-
-        public IEnumerable<Product> GetAvailableProducts()
-        {
-            return products.Where(p => p.IsAvailable);
         }
     }
 }

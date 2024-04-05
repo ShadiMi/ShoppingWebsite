@@ -1,46 +1,53 @@
-using ShoppingWebsite.Models;
-using ShoppingWebsite.Repository;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
+using ShoppingWebsite.Data; // Replace 'YourNamespace' with the actual namespace of your ApplicationDbContext
+using Microsoft.AspNetCore.Identity;
+using ShoppingWebsite.Models; // Replace 'YourNamespace' with your models' namespace, if you're using custom IdentityUser
+using ShoppingWebsite.Repository; // Replace 'YourNamespace' with your repository namespace, if applicable
+using ShoppingWebsite.Services; // Replace 'YourNamespace' with your services namespace, if applicable
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the DI container.
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddSession(options =>
-{
-    options.IdleTimeout = TimeSpan.FromMinutes(30); // Adjust as needed
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
-});
-builder.Services.AddScoped<ShoppingCart>(sp => ShoppingCart.GetCart(sp));
-builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+// Add services to the DI container
+// Configure DbContext for use with SQLite
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add services for controllers with views (if not already added)
+// Configure ASP.NET Core Identity
+builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+    .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// If you have additional services and repositories, register them here
+// Example:
+// builder.Services.AddScoped<IProductRepository, ProductRepository>();
+// builder.Services.AddScoped<CustomerService>();
+
+// Add services for MVC
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthorization();
-app.UseSession(); // Make sure to call UseSession() after UseRouting() and before UseEndpoints().
+app.UseAuthentication(); // Enables authentication capabilities
+app.UseAuthorization(); // Enables authorization capabilities
 
+// Define the default route
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
-

@@ -1,32 +1,46 @@
 ﻿@model IEnumerable<ShoppingWebsite.Models.Product>
 
-@{
-    ViewData["Title"] = "Product Listing";
-}
+<h2>Products</h2>
 
-<h2>@ViewData["Title"]</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.ActionLink("Product Name", "Index", new { sortOrder = ViewData["NameSortParm"] })
+            </th>
+            <th>
+                @Html.ActionLink("Category", "Index", new { sortOrder = ViewData["CategorySortParm"] })
+            </th>
+            <th>Unit Price</th>
+            <th>
+                @Html.ActionLink("Units In Stock", "Index", new { sortOrder = ViewData["StockSortParm"] })
+            </th>
+            <th>Image</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
 
-<div class="row">
-    @foreach (var product in Model)
-    {
-        <div class="col-md-4">
-            <div class="card mb-4 shadow-sm">
-                @if (!string.IsNullOrEmpty(product.ImageUrl))
-                {
-                    <img class="bd-placeholder-img card-img-top" src="@product.ImageUrl" alt="@product.Name">
-                }
-                <div class="card-body">
-                    <h3>@product.Name</h3>
-                    <p class="card-text">@product.Description</p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-sm btn-outline-secondary">View</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary">Edit</button>
-                        </div>
-                        <small class="text-muted">$@product.Price</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-</div>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.ProductName) <br><img src="@item.Supplier.Logo" alt="Logo Image" style="width: 70px; height: auto;" /></td>
+                <td>@Html.DisplayFor(modelItem => item.Category.CategoryName)</td>
+                <td>@Html.DisplayFor(modelItem => item.UnitPrice)</td>
+                <td>@Html.DisplayFor(modelItem => item.UnitsInStock)</td>
+                <td>
+                    <img src="@item.Image" alt="Product Image" style="width: 100px; height: auto;" /> 
+                </td>
+                <td>
+                    @Html.ActionLink("Edit", "Edit", new { id = item.ProductID }) |
+                    @Html.ActionLink("Details", "Details", new { id = item.ProductID }) |
+                    @Html.ActionLink("Delete", "Delete", new { id = item.ProductID })
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<p>
+    @Html.ActionLink("Create New", "Create")
+</p>
