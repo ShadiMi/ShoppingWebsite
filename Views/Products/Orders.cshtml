@@ -1,0 +1,39 @@
+﻿@model IEnumerable<ShoppingWebsite.ViewModels.OrderViewModel>
+
+@{
+    ViewData["Title"] = "Product Orders";
+}
+
+<h2 class="mb-4">Product Orders</h2>
+
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="thead-dark">
+            <tr>
+                <th scope="col">Product Name</th>
+                <th scope="col">Units On Order</th>
+                <th scope="col">Resupply</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var order in Model)
+            {
+                <tr>
+                    <td>@order.ProductName</td>
+                    <td>@order.UnitsOnOrder</td>
+                    <td>
+                        <form asp-action="Resupply" method="post" class="form-inline">
+                            <input type="hidden" name="productId" value="@order.ProductId" />
+                            <div class="input-group mb-2 mr-sm-2">
+                                <input type="number" class="form-control" name="resupplyAmount" placeholder="Amount" min="1" required>
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                </div>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

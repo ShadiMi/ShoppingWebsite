@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ShoppingWebsite.Data;
 using ShoppingWebsite.Models;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc.Rendering;
+using ShoppingWebsite.ViewModels;
 
 namespace ShoppingWebsite.Controllers
 {
@@ -17,43 +17,75 @@ namespace ShoppingWebsite.Controllers
             _context = context;
         }
 
+
         // GET: Products
-        // Updated to include sorting logic in a single Index method
-        public async Task<IActionResult> Index(string sortOrder)
-        {
-            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
-            ViewData["CategorySortParm"] = sortOrder == "Category" ? "category_desc" : "Category";
-            ViewData["StockSortParm"] = sortOrder == "Stock" ? "stock_desc" : "Stock";
+public async Task<IActionResult> Index(string category, bool onSale = false, decimal? minPrice = null, decimal? maxPrice = null, string format = null, string sortOrder = null)
+{
+    var productsQuery = _context.Products.Include(p => p.Category).Include(p => p.Supplier).AsQueryable();
+            var categories = await _context.Categories.ToListAsync();
 
-            var products = from p in _context.Products.Include(p => p.Category).Include(p => p.Supplier)
-                           select p;
+            ViewBag.Formats = new List<string> { "Hardcover", "Paperback", "eBook", "Audiobook" }; 
+    ViewBag.CurrentSort = sortOrder;
+    ViewBag.CategoryFilter = category;
+    ViewBag.OnSaleFilter = onSale;
+    ViewBag.MinPriceFilter = minPrice;
+    ViewBag.MaxPriceFilter = maxPrice;
+    ViewBag.FormatFilter = format;
 
+    if (!string.IsNullOrEmpty(category))
+    {
+        productsQuery = productsQuery.Where(p => p.Category.CategoryName == category);
+    }
+    if (onSale)
+    {
+        productsQuery = productsQuery.Where(p => p.IsOnSale);
+    }
+    if (minPrice.HasValue)
+    {
+        productsQuery = productsQuery.Where(p => p.UnitPrice >= minPrice.Value);
+    }
+    if (maxPrice.HasValue)
+    {
+        productsQuery = productsQuery.Where(p => p.UnitPrice <= maxPrice.Value);
+    }
+    if (!string.IsNullOrEmpty(format))
+    {
+        productsQuery = productsQuery.Where(p => p.Format == format);
+    }
+
+            // Sorting logic based on sortOrder
             switch (sortOrder)
             {
-                case "name_desc":
-                    products = products.OrderByDescending(p => p.ProductName);
+                case "NameAsc":
+                    productsQuery = productsQuery.OrderBy(p => p.ProductName);
                     break;
-                case "Category":
-                    products = products.OrderBy(p => p.Category.CategoryName);
+                case "NameDesc":
+                    productsQuery = productsQuery.OrderByDescending(p => p.ProductName);
                     break;
-                case "category_desc":
-                    products = products.OrderByDescending(p => p.Category.CategoryName);
+                case "PriceAsc":
+                    productsQuery = productsQuery.OrderBy(p => (int)p.UnitPrice);
                     break;
-                case "Stock":
-                    products = products.OrderBy(p => p.UnitsInStock);
-                    break;
-                case "stock_desc":
-                    products = products.OrderByDescending(p => p.UnitsInStock);
+                case "PriceDesc":
+                    productsQuery = productsQuery.OrderByDescending(p => (int)p.UnitPrice);
                     break;
                 default:
-                    products = products.OrderBy(p => p.ProductName);
+                    // Default sorting criteria or no sorting
                     break;
             }
 
-            return View(await products.ToListAsync());
-        }
+            var products = await productsQuery.ToListAsync();
+
+    var cartCount = HttpContext.Session.GetInt32("CartCount") ?? 0;
+    ViewBag.CartCount = cartCount;
+            // Before the return View(products); line, add:
+    ViewBag.Categories = await _context.Categories.OrderBy(c => c.CategoryName).Select(c => new SelectListItem{Value = c.CategoryName,Text = c.CategoryName}).ToListAsync();
+            ViewBag.CategoryFilter = category;
+            return View(products);
+}
 
         // GET: Products/Create
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
             ViewData["CategoryID"] = new SelectList(_context.Categories, "CategoryID", "CategoryName");
@@ -64,20 +96,22 @@ namespace ShoppingWebsite.Controllers
         // POST: Products/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ProductID,ProductName,SupplierID,CategoryID,UnitPrice,UnitsInStock,UnitsOnOrder,Image")] Product product)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Create([Bind("ProductID,ProductName,SupplierID,CategoryID,UnitPrice,UnitsInStock,UnitsOnOrder,Image,IsOnSale,SalePrice,Format")] Product Model)
         {
-            if (ModelState.IsValid)
+            if (ModelState.IsValid==false)
             {
-                _context.Add(product);
+                _context.Add(Model);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["CategoryID"] = new SelectList(_context.Categories, "CategoryID", "CategoryName", product.CategoryID);
-            ViewData["SupplierID"] = new SelectList(_context.Suppliers, "SupplierID", "CompanyName", product.SupplierID);
-            return View(product);
+            ViewData["CategoryID"] = new SelectList(_context.Categories, "CategoryID", "CategoryName", Model.CategoryID);
+            ViewData["SupplierID"] = new SelectList(_context.Suppliers, "SupplierID", "CompanyName", Model.SupplierID);
+            return View(Model);
         }
 
         // GET: Products/Edit/5
+        [HttpGet]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -85,36 +119,39 @@ namespace ShoppingWebsite.Controllers
                 return NotFound();
             }
 
-            var product = await _context.Products.FindAsync(id);
-            if (product == null)
+            var Model = await _context.Products.FindAsync(id);
+            if (Model == null)
             {
                 return NotFound();
             }
-            ViewData["CategoryID"] = new SelectList(_context.Categories, "CategoryID", "CategoryName", product.CategoryID);
-            ViewData["SupplierID"] = new SelectList(_context.Suppliers, "SupplierID", "CompanyName", product.SupplierID);
-            return View(product);
+
+            // Populate dropdown lists
+            ViewData["CategoryID"] = new SelectList(await _context.Categories.ToListAsync(), "CategoryID", "CategoryName", Model.CategoryID);
+            ViewData["SupplierID"] = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "CompanyName", Model.SupplierID);
+            return View(Model);
         }
 
         // POST: Products/Edit/5
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("ProductID,ProductName,SupplierID,CategoryID,UnitPrice,UnitsInStock,UnitsOnOrder,Image")] Product product)
+        public async Task<IActionResult> Edit(int id, [Bind("ProductID,ProductName,SupplierID,CategoryID,UnitPrice,UnitsInStock,UnitsOnOrder,Image,IsOnSale,SalePrice,Format")] Product Model)
         {
-            if (id != product.ProductID)
+            if (id != Model.ProductID)
             {
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
+            if (ModelState.IsValid == false)
             {
                 try
                 {
-                    _context.Update(product);
+                    _context.Update(Model);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!ProductExists(product.ProductID))
+                    if (!ProductExists(Model.ProductID))
                     {
                         return NotFound();
                     }
@@ -125,11 +162,18 @@ namespace ShoppingWebsite.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["CategoryID"] = new SelectList(_context.Categories, "CategoryID", "CategoryName", product.CategoryID);
-            ViewData["SupplierID"] = new SelectList(_context.Suppliers, "SupplierID", "CompanyName", product.SupplierID);
-            return View(product);
+
+            ViewData["CategoryID"] = new SelectList(await _context.Categories.ToListAsync(), "CategoryID", "CategoryName", Model.CategoryID);
+            ViewData["SupplierID"] = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "CompanyName", Model.SupplierID);
+            return View(Model);
         }
 
+
+
+        private bool ProductExists(int id)
+        {
+            return _context.Products.Any(e => e.ProductID == id);
+        }
         // GET: Products/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
@@ -138,16 +182,16 @@ namespace ShoppingWebsite.Controllers
                 return NotFound();
             }
 
-            var product = await _context.Products
+            var Model = await _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.Supplier)
                 .FirstOrDefaultAsync(m => m.ProductID == id);
-            if (product == null)
+            if (Model == null)
             {
                 return NotFound();
             }
 
-            return View(product);
+            return View(Model);
         }
 
         // POST: Products/Delete/5
@@ -155,16 +199,129 @@ namespace ShoppingWebsite.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var product = await _context.Products.FindAsync(id);
-            _context.Products.Remove(product);
+            var Model = await _context.Products.FindAsync(id);
+            _context.Products.Remove(Model);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
 
-        private bool ProductExists(int id)
+
+        public async Task<IActionResult> Details(int? id)
         {
-            return _context.Products.Any(e => e.ProductID == id);
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var Model = await _context.Products
+                .Include(p => p.Category) 
+                .Include(p => p.Supplier) 
+                .FirstOrDefaultAsync(m => m.ProductID == id);
+
+            if (Model == null)
+            {
+                return NotFound();
+            }
+
+            return View(Model);
+        }
+
+        public async Task<IActionResult> ProductsByCategory(int categoryId, string sortOrder)
+        {
+            var categoryName = await _context.Categories
+                .Where(c => c.CategoryID == categoryId)
+                .Select(c => c.CategoryName)
+                .FirstOrDefaultAsync();
+            var categories = await _context.Categories.ToListAsync();
+            ViewData["CategoryId"] = categoryId;
+            if (string.IsNullOrEmpty(categoryName))
+            {
+                return NotFound("Category not found.");
+            }
+
+            ViewData["CategoryName"] = categoryName;
+            ViewData["CurrentSort"] = sortOrder;
+            ViewData["PriceSortParam"] = string.IsNullOrEmpty(sortOrder) ? "price_desc" : "";
+
+            // Fetch products including the supplier
+            var products = await _context.Products
+                .Include(p => p.Supplier)
+                .Where(p => p.CategoryID == categoryId)
+                .ToListAsync(); // Materialize the query here
+
+            // Apply sorting in memory
+            products = sortOrder switch
+            {
+                "price_desc" => products.OrderByDescending(p => p.UnitPrice).ToList(),
+                _ => products.OrderBy(p => p.UnitPrice).ToList(),
+            };
+
+            return View(products);
+        }
+
+        public async Task<IActionResult> NotifyWhenAvailable(int productId)
+        {
+            var Model = await _context.Products.FirstOrDefaultAsync(p => p.ProductID == productId);
+            if (Model != null)
+            {
+                Model.UnitsOnOrder += 1;
+                _context.Update(Model);
+                await _context.SaveChangesAsync();
+
+                TempData["Notification"] = "You will be notified when the Model is back in stock.";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        public async Task<IActionResult> Orders()
+        {
+            var productsWithOrders = await _context.Products
+                .Where(p => p.UnitsOnOrder > 0)
+                .Select(p => new OrderViewModel
+                {
+                    ProductId = p.ProductID,
+                    ProductName = p.ProductName,
+                    UnitsOnOrder = p.UnitsOnOrder
+                })
+                .ToListAsync();
+
+            return View(productsWithOrders);
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> Resupply(int productId, int resupplyAmount)
+        {
+            var Model = await _context.Products.FindAsync(productId);
+            if (Model == null) return NotFound();
+
+            // Logic for resupplying the Model
+            Model.UnitsInStock += resupplyAmount;
+            Model.UnitsOnOrder = 0;
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Orders));
+        }
+
+
+        public async Task<IActionResult> Search(string query)
+        {
+            if (string.IsNullOrEmpty(query))
+            {
+                return RedirectToAction(nameof(Index));
+            }
+
+            var searchResults = await _context.Products
+                    .Where(p => EF.Functions.Like(p.ProductName, $"%{query}%") || EF.Functions.Like(p.Category.CategoryName, $"%{query}%"))
+                    .Include(p => p.Category)
+                    .ToListAsync();
+
+            ViewData["SearchQuery"] = query;
+
+            return View(searchResults);
         }
     }
 }

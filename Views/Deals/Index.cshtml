@@ -1,0 +1,46 @@
+﻿@model IEnumerable<ShoppingWebsite.Models.Product>
+<style>
+    .discount-percentage {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: #ff0000; /* Bright color for visibility, adjust as needed */
+        color: #ffffff; /* White text color for contrast */
+        padding: 5px;
+        border-bottom-right-radius: 8px; /* Rounded corner on the bottom right */
+        font-weight: bold;
+        font-size: 1.1em; /* Smaller font size for the discount text */
+    }
+</style>
+
+<h2>Deals</h2>
+
+
+<div class="row">
+    @foreach (var Model in Model)
+    {
+        <div class="col-md-4">
+            <div class="card">
+                <div class="discount-percentage">
+                    @($"{Math.Round(((Model.UnitPrice - Model.SalePrice) / Model.UnitPrice) * 100)}% off")
+                </div>
+                <a href="@Url.Action("Details", "Products", new { id = Model.ProductID })" class="deal-item-link">
+                <img src="@Model.Image" class="card-img-top" alt="Product Image">               </a>
+                <div class="card-body">
+                    <a href="@Url.Action("Details", "Products", new { id = Model.ProductID })" class="deal-item-link">
+                        <h5 class="card-title">@Html.DisplayFor(modelItem => Model.ProductName)</h5></a>
+                    <img src="@Model.Supplier.Logo" alt="Supplier Logo" style="width: 70px; height: auto;" /> <p class="card-text">@Html.DisplayFor(modelItem => Model.Category.CategoryName)</p>
+                    @if (Model.IsOnSale)
+                    {
+                        <p class="text-danger"><b>Sale Price: @Html.DisplayFor(modelItem => Model.SalePrice)</b></p>
+                    }
+                    <p class="card-text">Original Price: <s>@Html.DisplayFor(modelItem => Model.UnitPrice)</s></p>
+                    <p class="card-text">In Stock: @Html.DisplayFor(modelItem => Model.UnitsInStock)</p>
+                  
+               
+                    
+                </div>
+            </div>
+        </div>
+    }
+</div>

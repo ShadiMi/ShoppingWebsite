@@ -1,24 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ShoppingWebsite.Services; // Adjust namespace to where your services are defined
-using System.Threading.Tasks;
+using ShoppingWebsite.Data;
 
-namespace ShoppingWebsite.Controllers
+public class CustomersController : Controller
 {
-    public class CustomersController : Controller
+    private readonly ApplicationDbContext _context;
+
+    public CustomersController(ApplicationDbContext context)
     {
-        private readonly CustomerService _customerService;
-
-        public CustomersController(CustomerService customerService)
-        {
-            _customerService = customerService;
-        }
-
-        public async Task<IActionResult> Index()
-        {
-            var customers = await _customerService.GetAllCustomersAsync();
-            return View(customers);
-        }
-
-        // Additional actions (Create, Details, Edit, Delete) here...
+        _context = context;
     }
+
 }

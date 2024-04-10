@@ -1,0 +1,98 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Secure Payment</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card-header {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-custom {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .form-control {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card">
+                    <div class="card-header text-center">
+                        Checkout
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">Your Order Summary</h5>
+                        <ul class="list-group list-group-flush mb-4">
+                            @foreach (var item in Model.Items)
+                            {
+                                <li class="list-group-item">@item.ProductName - @item.Quantity x @item.Price.ToString("C")</li>
+                            }
+                        </ul>
+                        <p class="card-text"><strong>Total Cost: @Model.TotalCost.ToString("C")</strong></p>
+
+                        <form action="@Url.Action("AddPaymentInfo", "Checkout")" method="post" class="needs-validation" novalidate>
+                            <input type="hidden" id="totalPrice" name="totalPrice" value="@Model.TotalCost">
+                            <input type="hidden" id="transactionDate" name="transactionDate" value="@DateTime.Now.ToString("yyyy-MM-dd")">
+
+                            <div class="form-group">
+                                <label for="cardNumber">Card Number</label>
+                                <input type="text" class="form-control" id="cardNumber" name="cardNumber" placeholder="1234 1234 1234 1234" pattern="\d{16}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="cardholderName">Cardholder Name</label>
+                                <input type="text" class="form-control" id="cardholderName" name="cardholderName" placeholder="Cardholder Name" required>
+                            </div>
+                            <div class="form-row">
+                                <div class="col">
+                                    <label for="expiryMonth">Expiration Month</label>
+                                    <input type="text" class="form-control" id="expiryMonth" name="expiryMonth" placeholder="MM" pattern="(0[1-9]|1[0-2])" required>
+                                </div>
+                                <div class="col">
+                                    <label for="expiryYear">Expiration Year</label>
+                                    <input type="text" class="form-control" id="expiryYear" name="expiryYear" placeholder="YYYY" pattern="\d{4}" required>
+                                </div>
+                                <div class="col">
+                                    <label for="cvc">CVC</label>
+                                    <input type="text" class="form-control" id="cvc" name="cvc" placeholder="CVC" pattern="\d{3}" required>
+                                </div>
+                            </div>
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-custom">Submit Payment</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            'use strict';
+            window.addEventListener('load', function () {
+                var forms = document.getElementsByClassName('needs-validation');
+                var validation = Array.prototype.filter.call(forms, function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (form.checkValidity() === false) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        form.classList.add('was-validated');
+                    }, false);
+                });
+            }, false);
+        })();
+    </script>
+</body>
+</html>

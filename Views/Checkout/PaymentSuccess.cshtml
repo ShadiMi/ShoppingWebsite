@@ -1,0 +1,16 @@
+﻿@{
+    ViewData["Title"] = "Payment Success";
+}
+
+<div class="text-center">
+    <h2>@TempData["PaymentResult"]</h2>
+    <p>Your transaction has been processed successfully.</p>
+</div>
+
+@section Scripts {
+    <script>
+        setTimeout(function () {
+            window.location.href = '@Url.Action("Index", "Home")'; // Redirect to the Home controller's Index action
+        }, 3000); // 3000 milliseconds = 3 seconds
+    </script>
+}

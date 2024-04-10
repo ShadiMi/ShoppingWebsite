@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.Collections.Generic; // Make sure to include this for List<Product>
 
-namespace ShoppingWebsite.Models // This line ensures your class is within the namespace
+namespace ShoppingWebsite.Models
 {
     public class Category
     {

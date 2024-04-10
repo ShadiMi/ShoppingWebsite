@@ -1,60 +1,43 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
-using ShoppingWebsite.Models;
 
 namespace ShoppingWebsite.Models
 {
     public class ShoppingCart
     {
-        public List<Product> Products { get; set; } = new List<Product>();
+        public List<CartItem> CartItems { get; set; } = new List<CartItem>();
 
-        // Retrieves the shopping cart from the session, or creates one if it doesn't exist
-        public static ShoppingCart GetCart(IServiceProvider services)
+        public void AddProduct(int productId, int quantity)
         {
-            ISession session = services.GetRequiredService<IHttpContextAccessor>()?.HttpContext.Session;
-            string cartString = session.GetString("Cart");
-
-            if (string.IsNullOrEmpty(cartString))
+            var cartItem = CartItems.FirstOrDefault(c => c.ProductId == productId);
+            if (cartItem != null)
             {
-                return new ShoppingCart();
+                // If the item is already in the cart, increase the quantity
+                cartItem.Quantity += quantity;
             }
             else
             {
-                return JsonSerializer.Deserialize<ShoppingCart>(cartString);
+                // Add the new item to the cart
+                CartItems.Add(new CartItem { ProductId = productId, Quantity = quantity });
             }
         }
 
-        // Saves the current state of the cart to the session
-        public void SaveCart(HttpContext httpContext)
+        public void RemoveFromCart(int productId)
         {
-            var session = httpContext.Session;
-            session.SetString("Cart", JsonSerializer.Serialize(this));
-        }
-
-        // Adds a product to the cart
-        public void AddProduct(Product product)
-        {
-            var existingProduct = Products.FirstOrDefault(p => p.ProductID == product.ProductID);
-            if (existingProduct != null)
+            var existingItem = CartItems.FirstOrDefault(ci => ci.ProductId == productId);
+            if (existingItem != null && existingItem.Quantity > 1)
             {
-                // For simplicity, assuming each product is unique in the cart. Implement quantity logic if needed.
+                // If more than one, decrease the quantity
+                existingItem.Quantity--;
             }
             else
             {
-                Products.Add(product);
+                // If only one item or not concerned about quantity, remove it completely
+                CartItems.RemoveAll(ci => ci.ProductId == productId);
             }
         }
-
-        // Removes a product from the cart
-        public void RemoveProduct(int productId)
-        {
-            Products.RemoveAll(p => p.ProductID == productId);
-        }
-
-        // Calculates the total cost of the shopping cart
-        public decimal Total => Products.Sum(p => p.UnitPrice);
     }
+
+    
 }

@@ -1,9 +1,6 @@
-﻿using ShoppingWebsite.Models; // Adjust the namespace based on your project
-using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Microsoft.EntityFrameworkCore;
 using ShoppingWebsite.Data;
+using ShoppingWebsite.Models; // Adjust the namespace based on your project
 
 namespace ShoppingWebsite.DAL
 {

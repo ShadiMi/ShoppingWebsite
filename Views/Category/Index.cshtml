@@ -21,15 +21,29 @@
                     <img src="@item.Image" alt="Category Image" style="height: 50px;" />
                 </td>
                 <td>
-                    @Html.ActionLink("Edit", "Edit", new { id = item.CategoryID }) |
-                    @Html.ActionLink("Details", "Details", new { id = item.CategoryID }) |
-                    @Html.ActionLink("Delete", "Delete", new { id = item.CategoryID })
+                    <a href="@Url.Action("ProductsByCategory", "Products", new { categoryId = item.CategoryID })" class="text-decoration-none">View</a>
                 </td>
+                @if (User.IsInRole("Admin"))
+                {
+                    <td>
+                        <a href="@Url.Action("Edit", "Category", new { id = item.CategoryID })" class="btn btn-info btn-block mt-2">Edit</a>
+                    <form asp-action="Delete" asp-route-id="@item.CategoryID" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger btn-block mt-2">Delete Product</button>
+                    </form>
+                </td>
+                }
+
             </tr>
         }
     </tbody>
 </table>
-
+ @if (User.IsInRole("Admin"))
+                    {
 <p>
     @Html.ActionLink("Create New", "Create")
 </p>
+                    }
+@section Scripts {
+
+}
